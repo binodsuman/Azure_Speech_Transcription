@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Audio - Speech Diarization</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .upload-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .warning-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .warning-box.show {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .file-input-wrapper {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+
+        .file-input-wrapper:hover {
+            border-color: #764ba2;
+            background: #f8faff;
+        }
+
+        .file-input-wrapper input {
+            display: none;
+        }
+
+        .email-input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .existing-file-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-view {
+            flex: 1;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .btn-new {
+            flex: 1;
+            padding: 10px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .processed-files {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .files-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .files-table th {
+            text-align: left;
+            padding: 10px;
+            background: #f8faff;
+        }
+
+        .files-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .view-link {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎤 Speech Diarization Studio</h1>
+        <p>Upload WAV files for speaker identification</p>
+    </div>
+
+    <div class="upload-card">
+        <div class="info-box">
+            <span>ℹ️</span>
+            <span>Files are stored in Azure Blob with original names. If a file was processed before, existing transcript will be shown.</span>
+        </div>
+
+        <div class="warning-box" id="warningBox">
+            <span>⚠️</span>
+            <span id="warningMessage"></span>
+        </div>
+
+        <form method="POST" action="/upload" enctype="multipart/form-data" id="uploadForm">
+            <div class="file-input-wrapper" id="dropzone">
+                <div>📁 Drag & drop or click to select WAV file</div>
+                <div style="color: #666; margin-top: 10px;">Maximum size: 200MB</div>
+                <input type="file" name="file" id="fileInput" accept=".wav,audio/wav" required>
+            </div>
+
+            <input type="email" name="email" class="email-input"
+                   placeholder="Email for notification (optional)">
+
+            <button type="submit" class="submit-btn" id="submitBtn">
+                🚀 Start Transcription
+            </button>
+        </form>
+
+        <div class="existing-file-actions" id="existingFileActions" style="display: none;">
+            <a href="#" id="viewExistingLink" class="btn-view">View Existing Transcript</a>
+            <button onclick="resetForm()" class="btn-new">Upload Different File</button>
+        </div>
+
+        <div th:if="${error}" style="color: #dc3545; margin-top: 15px;" th:text="${error}"></div>
+    </div>
+
+    <div class="processed-files" th:if="${processedFiles != null}">
+        <h3 style="margin-bottom: 15px;">📋 Previously Processed Files</h3>
+        <table class="files-table">
+            <thead>
+            <tr>
+                <th>File Name</th>
+                <th>Processed Date</th>
+                <th>Size</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="file : ${processedFiles}">
+                <td th:text="${file.audioFile}"></td>
+                <td th:text="${file.formattedDate}"></td>
+                <td th:text="${file.formattedSize}"></td>
+                <td>
+                    <a th:href="@{'/api/transcript/' + ${file.audioFile}}"
+                       class="view-link" target="_blank">View Transcript</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const dropzone = document.getElementById('dropzone');
+    const warningBox = document.getElementById('warningBox');
+    const warningMessage = document.getElementById('warningMessage');
+    const existingFileActions = document.getElementById('existingFileActions');
+    const viewExistingLink = document.getElementById('viewExistingLink');
+    const submitBtn = document.getElementById('submitBtn');
+
+    // Check file when selected
+    fileInput.addEventListener('change', checkFileExistence);
+
+    function checkFileExistence() {
+        if (fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Check if file exists in blob storage
+            fetch('/api/check-file', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    warningBox.classList.add('show');
+                    warningMessage.textContent = `File "${file.name}" already exists with transcript. You can view existing transcript or upload again to overwrite.`;
+                    existingFileActions.style.display = 'flex';
+                    viewExistingLink.href = `/api/transcript/${encodeURIComponent(file.name)}`;
+                    submitBtn.disabled = true;
+                } else {
+                    warningBox.classList.remove('show');
+                    existingFileActions.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+            });
+        }
+    }
+
+    function resetForm() {
+        fileInput.value = '';
+        warningBox.classList.remove('show');
+        existingFileActions.style.display = 'none';
+        submitBtn.disabled = false;
+    }
+
+    // Drag and drop
+    dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#28a745';
+    });
+
+    dropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#667eea';
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.style.borderColor = '#667eea';
+
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            checkFileExistence();
+        }
+    });
+
+    dropzone.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // Form submit
+    document.getElementById('uploadForm').addEventListener('submit', () => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '⏳ Processing...';
+    });
+</script>
+</body>
+</html>

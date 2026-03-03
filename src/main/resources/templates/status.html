@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Status: ' + ${job.status} + ' - Speech Diarization'">Job Status</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .job-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .job-id {
+            font-family: monospace;
+            background: #f0f4ff;
+            padding: 8px 15px;
+            border-radius: 8px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .status-UPLOADING {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-PROCESSING {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-COMPLETED {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-FAILED {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .progress-container {
+            margin: 25px 0;
+        }
+
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #f0f0f0;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+            border-radius: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255,255,255,0.2),
+                transparent
+            );
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .job-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8faff;
+            border-radius: 15px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .detail-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .message-box {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .message-info {
+            background: #e8f4ff;
+            border-left: 4px solid #667eea;
+        }
+
+        .message-error {
+            background: #fee;
+            border-left: 4px solid #dc3545;
+        }
+
+        .auto-refresh {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
+            border-radius: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .segments-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .speaker-segment {
+            padding: 20px;
+            border-radius: 12px;
+            background: #f8faff;
+            border-left: 4px solid;
+            transition: transform 0.2s;
+        }
+
+        .speaker-segment:hover {
+            transform: translateX(5px);
+        }
+
+        .speaker-1 { border-left-color: #667eea; }
+        .speaker-2 { border-left-color: #4CAF50; }
+        .speaker-3 { border-left-color: #FF9800; }
+        .speaker-4 { border-left-color: #E91E63; }
+        .speaker-5 { border-left-color: #9C27B0; }
+
+        .speaker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .speaker-id {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        .confidence-badge {
+            background: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: #666;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .speaker-text {
+            color: #333;
+            line-height: 1.6;
+            margin-bottom: 10px;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.9em;
+            display: flex;
+            gap: 20px;
+        }
+
+        .actions {
+            margin-top: 30px;
+            text-align: center;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .no-speech {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+
+        .emoji-large {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎤 Transcription Status</h1>
+    </div>
+
+    <div class="status-card">
+        <div class="job-header">
+            <span class="job-id" th:text="'Job: ' + ${job.jobId}">Job ID</span>
+            <span th:class="'status-badge status-' + ${job.status}"
+                  th:text="${job.status}">Status</span>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-label">
+                <span>Progress</span>
+                <span th:text="${job.progress} + '%'">0%</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" th:style="'width: ' + ${job.progress} + '%'"></div>
+            </div>
+            <div class="progress-text" th:text="${job.message}">Processing...</div>
+        </div>
+
+        <div class="job-details">
+            <div class="detail-item">
+                <span class="detail-label">File Name</span>
+                <span class="detail-value" th:text="${job.fileName}">file.wav</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">File Size</span>
+                <span class="detail-value" th:text="${job.formattedFileSize}">10 MB</span>
+            </div>
+            <div class="detail-item">
+                <span class="detail-label">Created</span>
+                <span class="detail-value" th:text="${#temporals.format(job.createdAt, 'HH:mm:ss')}">12:00:00</span>
+            </div>
+            <div class="detail-item" th:if="${job.completedAt != null}">
+                <span class="detail-label">Completed</span>
+                <span class="detail-value" th:text="${#temporals.format(job.completedAt, 'HH:mm:ss')}">12:05:00</span>
+            </div>
+        </div>
+
+        <div th:if="${job.status.toString() == 'PROCESSING'}" class="auto-refresh">
+            <div class="spinner"></div>
+            <span>Auto-refreshing every 5 seconds...</span>
+        </div>
+
+        <div th:if="${job.errorMessage}" class="message-box message-error">
+            <strong>Error:</strong> <span th:text="${job.errorMessage}">Error details</span>
+        </div>
+
+        <div th:if="${job.status.toString() == 'COMPLETED' && job.email != null}"
+             class="message-box message-info">
+            <strong>✓ Email notification sent to:</strong> <span th:text="${job.email}">email@example.com</span>
+        </div>
+    </div>
+
+    <div th:if="${job.status.toString() == 'COMPLETED' && segments != null && !segments.isEmpty()}"
+         class="results-card">
+        <h2 style="margin-bottom: 20px;">📝 Transcription Results</h2>
+
+        <div class="summary-stats">
+            <div class="stat-item">
+                <div class="stat-value" th:text="${#lists.size(segments)}">42</div>
+                <div class="stat-label">Segments</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" th:text="${job.totalSpeakers}">3</div>
+                <div class="stat-label">Speakers</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" th:text="${#numbers.formatDecimal(job.totalDuration / 1000.0, 1, 1) + 's'}">2:30</div>
+                <div class="stat-label">Duration</div>
+            </div>
+        </div>
+
+        <div class="segments-list">
+            <div th:each="segment : ${segments}"
+                 th:class="'speaker-segment speaker-' + ${#strings.substring(segment.speakerId, 7)}">
+                <div class="speaker-header">
+                    <span class="speaker-id" th:text="${segment.speakerId}">Speaker 1</span>
+                    <span class="confidence-badge"
+                          th:text="'Confidence: ' + ${#numbers.formatDecimal(segment.confidence * 100, 1, 0)} + '%'">
+                            Confidence: 95%
+                        </span>
+                </div>
+                <div class="speaker-text" th:text="${segment.text}">Transcribed text...</div>
+                <div class="timestamp">
+                    <span th:text="'⏱️ Start: ' + ${segment.formattedTime}">Start: 00:00</span>
+                    <span th:text="'📏 Duration: ' + ${#numbers.formatDecimal(segment.duration / 1000.0, 1, 1)} + 's'">
+                            Duration: 2.5s
+                        </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a href="/" class="btn btn-primary">🔄 Upload Another File</a>
+            <a href="/jobs" class="btn btn-secondary">📋 View All Jobs</a>
+        </div>
+    </div>
+
+    <div th:if="${job.status.toString() == 'COMPLETED' && (segments == null || segments.isEmpty())}"
+         class="results-card">
+        <div class="no-speech">
+            <div class="emoji-large">🔇</div>
+            <h3>No Speech Detected</h3>
+            <p>The audio file didn't contain any clear speech segments.</p>
+            <div class="actions" style="margin-top: 30px;">
+                <a href="/" class="btn btn-primary">Try Another File</a>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${job.status.toString() == 'FAILED'}" class="actions" style="margin-top: 20px;">
+        <a href="/" class="btn btn-primary">← Try Again</a>
+    </div>
+</div>
+
+<script th:if="${job.status.toString() == 'PROCESSING' || job.status.toString() == 'UPLOADING'}">
+    setTimeout(function() {
+        window.location.reload();
+    }, 5000);
+</script>
+</body>
+</html>

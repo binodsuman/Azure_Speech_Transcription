@@ -5,6 +5,8 @@
 
 A Spring Boot application that performs speaker diarization on WAV files using Azure Speech Services. The application identifies different speakers in an audio file and provides timestamped transcripts with speaker labels.
 
+YouTube: https://youtu.be/W1TE8eQA0i0
+
 ## 📋 Table of Contents
 - [Features](#features)
 - [Prerequisites](#prerequisites)
